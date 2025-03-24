@@ -6,11 +6,18 @@ const instance = axios.create({
 })
 
 instance.interceptors.request.use(function (config) {
-    //打印request
-    console.log(config)
+    const authToken = localStorage.getItem("authToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+    // 检查 URL 是否以 /article/ 或 /folder/ 开头
+    if (authToken && refreshToken && (config.url.startsWith('/article/') || config.url.startsWith('/folder/'))) {
+        config.headers['Authorization'] = `${authToken}`;
+        config.headers['RefreshToken'] = `${refreshToken}`;
+    }
+    // 打印请求配置（可选）
+    console.log(config);
     return config;
 }, function (error) {
-    console.log(error)
+    console.log(error);
     return Promise.reject(error);
 });
 

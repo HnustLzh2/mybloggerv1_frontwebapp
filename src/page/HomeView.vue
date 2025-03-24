@@ -13,7 +13,7 @@
         <a-list-item key="item.title">
           <template #actions>
             <span v-for="{ type, text } in item.actions" :key="type">
-              <component v-bind:is="type" style="margin-right: 8px" @click="ClickType(type)"/>
+              <component v-bind:is="type" style="margin-right: 8px" @click="clickType(type, item)"/>
               {{ text }}
             </span>
           </template>
@@ -49,10 +49,12 @@
 <script setup>
 import {LikeOutlined, MessageOutlined, StarOutlined} from '@ant-design/icons-vue';
 import {onMounted, ref, onUnmounted} from 'vue';
-import {articleAuthStore} from '@/store/auth';
+import {articleAuthStore, userAuthStore} from '@/store/auth';
 import {useRoute, useRouter} from 'vue-router';
+import {message} from "ant-design-vue";
 
 const articleAuth = articleAuthStore();
+const userAuth = userAuthStore();
 
 // 定义加载状态
 const isLoading = ref(true);
@@ -102,9 +104,9 @@ const fetchArticles = async () => {
     listData.value = response.data.articles.map(article => ({
       ...article,
       actions: [
-        { type: StarOutlined, text: article.favorites_Num.toString() },
-        { type: LikeOutlined, text: article.likes_Num.toString() },
-        { type: MessageOutlined, text: article.comments_Num.toString() },
+        { type: StarOutlined, text: article.star_num.toString() },
+        { type: LikeOutlined, text: article.likes_num.toString() },
+        { type: MessageOutlined, text: article.comments_num.toString() },
       ]
     })); // 将获取到的文章数据赋值给 listData
   } catch (error) {
@@ -113,8 +115,19 @@ const fetchArticles = async () => {
     isLoading.value = false; // 加载完成后关闭加载状态
   }
 };
-const clickType = (type) => {
-
+const clickType = async (type, item) => {
+  switch (type) {
+    case StarOutlined:
+      try {
+        const response = await articleAuth.addFavoriteArticle(item.id, userAuth.userInfo.id)
+        if (response) {
+          console.log("添加成功")
+          message.success("添加成功", 1)
+        }
+      }catch (e) {
+        console.error(e);
+      }
+  }
 }
 
 // 跳转到文章详情

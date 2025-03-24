@@ -52,6 +52,7 @@ const onFinish = async () => {
     if (res.status === 200) {
       await router.push({name: 'Home'});
       console.log('Success:', res.data);
+      userStore.setUserInfo(res.data.data);
     } else {
       console.error('Error:', res.data);
       message.warn(res.data.error);

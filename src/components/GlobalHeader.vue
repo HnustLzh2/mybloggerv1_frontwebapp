@@ -58,7 +58,6 @@ const router = useRouter();
 const userStore = userAuthStore()
 // 点击菜单后的路由跳转事件
 const doMenuClick = ({ key }) => {
-  console.log(userStore.token.toString());
   router.push({
     name: key,
   });
@@ -72,6 +71,7 @@ const logoutF = async () => {
   message.success("注销成功");
 }
 const tokens = tokenStore()
+
 // 监听路由变化，更新当前菜单选中状态
     router.afterEach((to, from, failure) => {
       current.value = [to.path];
@@ -81,7 +81,7 @@ onMounted(() => {
 // 每一次都要验证一下token是不是过期
   if (userStore.isAuthenticated) {
     try {
-      tokens.checkToken().then(res => {
+      tokens.checkToken(tokens.authTokenString, tokens.refreshTokenString).then(res => {
         if (!res.data.token) {
           localStorage.removeItem('token');
           localStorage.removeItem('userInfo');

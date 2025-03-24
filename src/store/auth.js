@@ -3,10 +3,10 @@ import {computed, ref} from 'vue';
 import axios from '../api';
 
 export const userAuthStore = defineStore('auth', () => {
-    const token = ref(localStorage.getItem('authToken'));
+    const token = ref(localStorage.getItem('token'));
     const refreshToken = ref(localStorage.getItem('refreshToken'));
     //定义一个用户状态管理
-    const userInfo = ref(localStorage.getItem('userInfo'));
+    const userInfo = ref({});
     const isAuthenticated = computed(() => !!token.value);  //有没有验证成功
 
     const login = async (email, password) => {
@@ -15,17 +15,17 @@ export const userAuthStore = defineStore('auth', () => {
             console.log(response.data.data.tokens);
             token.value = response.data.data.tokens;
             refreshToken.value = response.data.data.refresh_token;
-            userInfo.value = response.data.data;
             console.log(token.value);
             localStorage.setItem('authToken', token.value || '');
             localStorage.setItem('refreshToken', refreshToken.value || '');
-            localStorage.setItem('userInfo', JSON.stringify(response.data) || '');  //如果没有数据就是个空的string
             return response;
         } catch (error) {
             console.error('Login error:', error);
         }
     };
-
+    const setUserInfo = (UserInfo) => {
+        userInfo.value = UserInfo;
+    }
     const register = async (email, password, username, authorization) => {
         try {
             const response = await axios.post('/auth/register', { email, password, username, authorization });
@@ -54,6 +54,7 @@ export const userAuthStore = defineStore('auth', () => {
         token,
         isAuthenticated,
         userInfo,
+        setUserInfo,
         login,
         register,
         logout,
@@ -84,6 +85,8 @@ export const tokenStore = defineStore('valid', () => {
         }
     }
     return {
+        authTokenString,
+        refreshTokenString,
         checkToken,
         refreshToken,
     }
@@ -147,7 +150,7 @@ export const articleAuthStore = defineStore('article', () => {
     };
     const addFavoriteArticle = async (articleId, userId) => {
         try {
-            return await axios.post(`/article/addFavoriteArticle`, {article_id: articleId, user_id: userId})
+            return await axios.post(`/article/favoriteArticle`, {article_id: articleId, user_id: userId})
         } catch (err) {
             console.log(err)
             return null;
@@ -160,5 +163,45 @@ export const articleAuthStore = defineStore('article', () => {
         getArticlesByCategory,
         getFavoritesArticle,
         addFavoriteArticle,
+    }
+})
+export const folderStore = defineStore('folder', () => {
+    const createCustomizedFolder = async (folder_name, user_id) => {
+        try {
+            return await axios.post(`/folder/createFolder`, { folder_name, user_id })
+        }catch (error) {
+            console.error('Create folder error:', error);
+            return null;
+        }
+    }
+    const ModifyFolder = async (new_name, folder_id) => {
+        try {
+            return await axios.post(`/folder/modifyFolder`, {new_name, folder_id})
+        } catch (err){
+            console.error('ModifyFolder error:', err);
+            return null;
+        }
+    }
+    const GetArticleFromFolder = async (folder_id) => {
+        try {
+            return await axios.get(`/folder/getArticleFromFolder/${folder_id}`)
+        } catch (err) {
+            console.error('GetArticleFromFolder error:', err);
+            return null;
+        }
+    }
+    const GetAllFolder = async (id) => {
+        try {
+            return await axios.get(`/folder/getMyFolders/${id}`)
+        } catch (err) {
+            console.error('GetAllFolder error:', err);
+            return null;
+        }
+    }
+    return {
+        createCustomizedFolder,
+        ModifyFolder,
+        GetArticleFromFolder,
+        GetAllFolder,
     }
 })
