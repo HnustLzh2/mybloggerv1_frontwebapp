@@ -3,8 +3,8 @@ import {computed, ref} from 'vue';
 import axios from '../api';
 
 export const userAuthStore = defineStore('auth', () => {
-    const token = ref(localStorage.getItem('token'));
-    const refreshToken = ref(localStorage.getItem('refreshToken'));
+    const token = ref('');
+    const refreshToken = ref('');
     //定义一个用户状态管理
     const userInfo = ref({});
     const isAuthenticated = computed(() => !!token.value);  //有没有验证成功
@@ -16,8 +16,6 @@ export const userAuthStore = defineStore('auth', () => {
             token.value = response.data.data.tokens;
             refreshToken.value = response.data.data.refresh_token;
             console.log(token.value);
-            localStorage.setItem('authToken', token.value || '');
-            localStorage.setItem('refreshToken', refreshToken.value || '');
             return response;
         } catch (error) {
             console.error('Login error:', error);
@@ -38,11 +36,9 @@ export const userAuthStore = defineStore('auth', () => {
     };
 
     const logout = async() => {
+        userInfo.value = null;
         token.value = null;
         refreshToken.value = null;
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('userInfo');
         try {
             return await axios.get('/auth/logout');
         } catch (error) {
@@ -52,6 +48,7 @@ export const userAuthStore = defineStore('auth', () => {
 
     return {
         token,
+        refreshToken,
         isAuthenticated,
         userInfo,
         setUserInfo,
@@ -59,10 +56,13 @@ export const userAuthStore = defineStore('auth', () => {
         register,
         logout,
     };
+},{
+    persist: true,
 })
 export const tokenStore = defineStore('valid', () => {
-    const authTokenString = ref(localStorage.getItem('authToken'));
-    const refreshTokenString = ref(localStorage.getItem('refreshToken'));
+    const userAuth = userAuthStore()
+    const authTokenString = userAuth.token
+    const refreshTokenString = userAuth.refreshToken
     const checkToken = async (auth_token, refresh_token) => {
         try {
              return await axios.post("/checkToken", {auth_token, refresh_token});
@@ -76,8 +76,6 @@ export const tokenStore = defineStore('valid', () => {
             const response = await axios.post("/refreshToken", {auth_token, refresh_token});
             authTokenString.value = response.data.AuthToken;
             refreshTokenString.value = response.data.RefreshToken
-            localStorage.setItem('authToken', response.data.Token);
-            localStorage.setItem('refreshToken', response.data.Token);
             return response;
         } catch (err) {
             console.log(err);
@@ -148,11 +146,10 @@ export const articleAuthStore = defineStore('article', () => {
             return null;
         }
     };
-    const addFavoriteArticle = async (articleId, userId) => {
+    const addFavoriteArticle = async (articleId, folderId) => {
         try {
-            return await axios.post(`/article/favoriteArticle`, {article_id: articleId, user_id: userId})
+            return await axios.post(`/article/favoriteArticle`, {article_id: articleId, folder_id: folderId})
         } catch (err) {
-            console.log(err)
             return null;
         }
     }

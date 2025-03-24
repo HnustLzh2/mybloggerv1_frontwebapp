@@ -70,34 +70,10 @@ const logoutF = async () => {
   });
   message.success("注销成功");
 }
-const tokens = tokenStore()
-
 // 监听路由变化，更新当前菜单选中状态
     router.afterEach((to, from, failure) => {
       current.value = [to.path];
     });
-
-onMounted(() => {
-// 每一次都要验证一下token是不是过期
-  if (userStore.isAuthenticated) {
-    try {
-      tokens.checkToken(tokens.authTokenString, tokens.refreshTokenString).then(res => {
-        if (!res.data.token) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('userInfo');
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('refreshToken');
-          router.push({ name: "login" });
-          console.log("token非法");
-        }else {
-          console.log("token合法")
-        }
-      })
-    } catch (err) {
-      console.log(err);
-    }
-  }
-})
 
 </script>
 <style scoped>

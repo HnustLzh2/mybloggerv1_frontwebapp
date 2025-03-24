@@ -44,24 +44,42 @@
       暂无文章数据
     </div>
   </a-spin>
+  <a-modal v-model:visible="isAddFavorateArticle" title="添加到文件夹中" @ok="addToFolder" @cancel="cancelModal">
+    <a-list item-layout="horizontal" :data-source="folders">
+      <template #renderItem="{ item }">
+        <a-list-item>
+          <a-list-item-meta>
+            <template #title>
+              <!--这个checkbox为item添加了一个属性checked-->
+              <a-checkbox v-model:checked="item.checked">{{ item.folder_name }}</a-checkbox>
+            </template>
+          </a-list-item-meta>
+        </a-list-item>
+      </template>
+    </a-list>
+  </a-modal>
 </template>
 
 <script setup>
 import {LikeOutlined, MessageOutlined, StarOutlined} from '@ant-design/icons-vue';
 import {onMounted, ref, onUnmounted} from 'vue';
-import {articleAuthStore, userAuthStore} from '@/store/auth';
+import {articleAuthStore, folderStore, userAuthStore} from '@/store/auth';
 import {useRoute, useRouter} from 'vue-router';
-import {message} from "ant-design-vue";
-
+import {message, Modal} from "ant-design-vue";
+const isAddFavorateArticle = ref(false);
 const articleAuth = articleAuthStore();
 const userAuth = userAuthStore();
+const folderApi = folderStore()
+const folders = ref([]);
+const selectedFolders = ref([]);
+const currentArticleId = ref(null);
 
 // 定义加载状态
 const isLoading = ref(true);
 
 // 定义文章列表数据
 const listData = ref([]);
-
+const userInfo = userAuth.userInfo
 // 获取当前路由对象
 const route = useRoute();
 const router = useRouter();
@@ -92,7 +110,22 @@ const maxLength = ref(100);
 const truncatedContent = (content) => {
   return content.substring(0, maxLength.value) + '...';
 };
-
+// 获取所有收藏夹
+const getFolders = async () => {
+  try {
+    const userId = userInfo.id;
+    const response = await folderApi.GetAllFolder(userId);
+    if (response && response.data && response.data.data) {
+      // 为每个收藏夹添加一个 checked 属性，用于多选
+      folders.value = response.data.data.map(folder => ({
+        ...folder,
+        checked: false
+      }));
+    }
+  } catch (error) {
+    console.error('Get folders error:', error);
+  }
+};
 // 获取文章数据
 const fetchArticles = async () => {
   try {
@@ -119,17 +152,54 @@ const clickType = async (type, item) => {
   switch (type) {
     case StarOutlined:
       try {
-        const response = await articleAuth.addFavoriteArticle(item.id, userAuth.userInfo.id)
-        if (response) {
-          console.log("添加成功")
-          message.success("添加成功", 1)
-        }
+        currentArticleId.value = item.id;
+        await getFolders();
+        isAddFavorateArticle.value = true;
       }catch (e) {
         console.error(e);
       }
   }
 }
+// 添加到收藏夹
+const addToFolder = async () => {
+  try {
+    // 获取所有选中的收藏夹
+    const selected = folders.value.filter(folder => folder.checked);
+    if (selected.length === 0) {
+      Modal.error({
+        title: '错误',
+        content: '请至少选择一个收藏夹'
+      });
+      return;
+    }
 
+    // 遍历选中的收藏夹，将文章添加到每个收藏夹
+    for (const folder of selected) {
+      await articleAuth.addFavoriteArticle(currentArticleId.value, folder.id);
+    }
+
+    Modal.success({
+      title: '成功',
+      content: '文章已成功添加到选中的收藏夹'
+    });
+    // 关闭模态框
+    isAddFavorateArticle.value = false;
+  } catch (error) {
+    Modal.error({
+      title: '错误',
+      content: '添加文章到收藏夹失败'
+    });
+    console.error('Add to folder error:', error);
+  }
+};
+// 取消模态框
+const cancelModal = () => {
+  isAddFavorateArticle.value = false;
+  // 重置选中状态
+  folders.value.forEach(folder => {
+    folder.checked = false;
+  });
+};
 // 跳转到文章详情
 const moveToDetail = (item) => {
   router.push(`/article/${item.id}`); // 通过路由来传递数据
