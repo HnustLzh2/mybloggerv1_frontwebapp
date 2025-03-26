@@ -1,7 +1,8 @@
-<template >
+<template>
   <div class="article-container">
     <div class="article-background"></div>
     <div class="article-content">
+      <!-- 现有的文章内容结构 -->
       <div class="article-header">
         <h1 class="article-title">{{ article.Title }}</h1>
         <div class="article-meta">
@@ -38,7 +39,142 @@
         </div>
       </div>
     </div>
+
+    <!-- 评论区 -->
+    <div class="comments-section">
+      <h2 class="comments-title">评论({{ commentsData.length }})</h2>
+
+      <!-- 添加评论表单 -->
+      <a-form :model="addCommentForm" class="comment-form">
+        <a-form-item label="发表评论">
+          <a-input
+              v-model:value="addCommentForm.content"
+              type="textarea"
+              :rows="4"
+              placeholder="分享你的想法..."
+          />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handleSubmitComment" :disabled="!addCommentForm.content.trim()">
+            发表评论
+          </a-button>
+        </a-form-item>
+      </a-form>
+
+      <!-- 评论列表 -->
+      <a-list
+          class="comment-list"
+          item-layout="vertical"
+          :data-source="commentsData"
+          :pagination="{
+          onChange: page => {
+            console.log(page);
+          },
+          pageSize: 5,
+        }"
+      >
+        <template #renderItem="{ item }">
+          <a-list-item class="comment-item">
+            <!-- 评论者信息 -->
+            <a-comment
+                :author="item.UserName"
+                :avatar="item.UserAvatar"
+                :datetime="formatTime(item.PublishTime)"
+            >
+              <!-- 评论内容 -->
+              <template #content>
+                <p>{{ item.Content }}</p>
+                <!-- 点赞按钮 -->
+                <a-tooltip title="点赞">
+                  <span @click="handleLikeComment(item.CommentId)">
+                    <LikeOutlined :class="{ liked: item.Liked }" />
+                    <span class="comment-like-count">{{ item.LikeCount }}</span>
+                  </span>
+                </a-tooltip>
+                <!-- 删除按钮（如果用户有权限） -->
+                <a-tooltip v-if="item.SendUserId === userInfo.id" title="删除">
+                  <span @click="handleDeleteComment(item.CommentId)">
+                    <DeleteOutlined />
+                  </span>
+                </a-tooltip>
+              </template>
+
+              <!-- 回复评论区域 -->
+              <template #actions>
+                <span @click="showReplyForm(item.CommentId)">回复</span>
+              </template>
+
+              <!-- 回复表单 -->
+              <template v-if="replyingCommentId === item.CommentId" #content>
+                <a-input
+                    v-model:value="replyForm.content"
+                    placeholder="写下你的回复..."
+                    @press-enter="handleSubmitReply(item.CommentId)"
+                />
+                <a-button type="text" @click="cancelReply">取消</a-button>
+                <a-button type="primary" @click="handleSubmitReply(item.CommentId)">发送</a-button>
+                <div class="comment-content">{{ item.Content }}</div>
+
+                <!-- 点赞按钮 -->
+                <a-tooltip title="点赞">
+                  <span @click="handleLikeComment(item.CommentId)">
+                    <LikeOutlined :class="{ liked: item.Liked }" />
+                    <span class="comment-like-count">{{ item.LikeCount }}</span>
+                  </span>
+                </a-tooltip>
+                <!-- 删除按钮 -->
+                <a-tooltip v-if="item.SendUserId === userInfo.id" title="删除">
+                  <span @click="handleDeleteComment(item.CommentId)">
+                    <DeleteOutlined />
+                  </span>
+                </a-tooltip>
+              </template>
+
+              <!-- 子评论列表 -->
+              <template #children>
+                <a-list
+                    class="reply-list"
+                    :data-source="item.RepliedComments"
+                >
+                  <template #renderItem="{ item: reply }">
+                    <a-list-item>
+                      <a-comment
+                          :author="reply.UserName"
+                          :avatar="reply.UserAvatar"
+                          :datetime="formatTime(reply.PublishTime)"
+                      >
+                        <template #content>
+                          <p>{{ reply.Content }}</p>
+                          <!-- 点赞按钮 -->
+                          <a-tooltip title="点赞">
+                            <span @click="handleLikeReply(reply.CommentId)">
+                              <LikeOutlined :class="{ liked: reply.Liked }" />
+                              <span class="comment-like-count">{{ reply.LikeCount }}</span>
+                            </span>
+                          </a-tooltip>
+                          <!-- 删除按钮 -->
+                          <a-tooltip v-if="reply.SendUserId === userInfo.id" title="删除">
+                            <span @click="handleDeleteReply(reply.CommentId)">
+                              <DeleteOutlined />
+                            </span>
+                          </a-tooltip>
+                        </template>
+                        <template #actions>
+                          <span @click="showReplyForm(reply.CommentId)">回复</span>
+                        </template>
+                      </a-comment>
+                    </a-list-item>
+                  </template>
+                </a-list>
+              </template>
+            </a-comment>
+          </a-list-item>
+        </template>
+      </a-list>
+    </div>
   </div>
+
+  <!-- 添加评论的模态框 -->
   <a-modal v-model:visible="isAddComments" @ok="handleOk" @cancel="handleCancel" title="添加评论">
     <a-form :model="addCommentContent">
       <a-form-item label="评论内容">
@@ -50,15 +186,22 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { StarOutlined, LikeOutlined, MessageOutlined } from '@ant-design/icons-vue';
-import {articleAuthStore, userAuthStore} from "@/store/auth.js";
-import {useRoute} from "vue-router";
-import {message} from "ant-design-vue";
+import {
+  StarOutlined,
+  LikeOutlined,
+  MessageOutlined,
+  DeleteOutlined
+} from '@ant-design/icons-vue';
+import { articleAuthStore, userAuthStore } from "@/store/auth.js";
+import { useRoute } from "vue-router";
+import { message } from "ant-design-vue";
+import { format } from 'date-fns';
+
 // 定义文章数据结构
-const articleApiStore = articleAuthStore()
-const userApi = userAuthStore()
-const userInfo = userApi.userInfo
-const article = ref({   //命名要与后端定义的相同
+const articleApiStore = articleAuthStore();
+const userApi = userAuthStore();
+const userInfo = userApi.userInfo;
+const article = ref({
   ArticleId: '',
   Title: '',
   Content: '',
@@ -70,52 +213,223 @@ const article = ref({   //命名要与后端定义的相同
   ViewNum: 0,
   AuthorId: ''
 });
-// 获取当前路由对象          router是获取总路由管理器，route是获得当前url
+
+// 获取当前路由对象
 const route = useRoute();
-const articleId = route.params.id
-const isAddComments = ref(false)
-const addCommentContent = ref('')
-const commentsData = ref([])
-// 模拟获取文章数据
+const articleId = route.params.id;
+
+// 评论相关状态
+const commentsData = ref([]);
+const addCommentForm = ref({
+  content: ''
+});
+const replyForm = ref({
+  content: '',
+  parentId: null
+});
+const replyingCommentId = ref(null);
+const isAddComments = ref(false);
+const addCommentContent = ref('');
+
+// 获取文章数据
 const fetchArticle = async (id) => {
-  // 这里应该是从后端获取文章数据的逻辑
   const res = await articleApiStore.getArticleById(id);
-  article.value.ArticleId = res.data.article.id
-  article.value.Title = res.data.article.title
-  article.value.Content = res.data.article.content
-  article.value.Preview = res.data.article.preview
-  article.value.Category = res.data.article.category
-  article.value.AuthorId = res.data.article.author_id
-  article.value.CommentsNum = res.data.article.comments_num
-  article.value.ViewNum = res.data.article.view_num
-  article.value.StarNum = res.data.article.star_num
-  article.value.LikesNum = res.data.article.likes_num
+  if (res && res.data) {
+    article.value.ArticleId = res.data.article.id;
+    article.value.Title = res.data.article.title;
+    article.value.Content = res.data.article.content;
+    article.value.Preview = res.data.article.preview;
+    article.value.Category = res.data.article.category;
+    article.value.AuthorId = res.data.article.author_id;
+    article.value.CommentsNum = res.data.article.comments_num;
+    article.value.ViewNum = res.data.article.view_num;
+    article.value.StarNum = res.data.article.star_num;
+    article.value.LikesNum = res.data.article.likes_num;
+  }
 };
+
+// 获取评论数据
 const getComments = async () => {
-  const res = await articleApiStore.getComments(articleId)
-  commentsData.value = res.data.success
-}
-const handleOk = async () => {
-  await articleApiStore.addComment(addCommentContent.value, userInfo.id, article.value.ArticleId).then(res => {
-    if (res && res.status === 200) {
-      message.success("添加成功")
+  const res = await articleApiStore.getComments(articleId);
+  if (res && res.data && res.data.comments) {
+    commentsData.value = res.data.comments.map(comment => ({
+      ...comment,
+      Liked: comment.liked_by_user || false // 假设后端返回是否已点赞的字段
+    }));
+  }
+};
+
+// 提交评论
+const handleSubmitComment = async () => {
+  if (!addCommentForm.value.content) {
+    message.error('评论内容不能为空');
+    return;
+  }
+  try {
+    const res = await articleApiStore.addComment({
+      content: addCommentForm.value.content,
+      user_id: userInfo.id,
+      article_id: article.value.ArticleId,
+    });
+    if (res.status === 200) {
+      message.success('评论发表成功');
+      addCommentForm.value.content = '';
+      await getComments(); // 刷新评论列表
     } else {
-      message.error("添加失败")
+      message.error('发表评论失败');
     }
-  })
-  isAddComments.value = false;
-}
-const handleCancel = () => {
-  isAddComments.value = false;
-}
-const AddComments = async () => {
-  isAddComments.value = true;
-}
-// 页面加载时获取文章数据
+  } catch (error) {
+    message.error('发表评论时出错');
+    console.error(error);
+  }
+};
+
+// 点赞评论
+const handleLikeComment = async (commentId) => {
+  try {
+    const res = await articleApiStore.likeComment(commentId, userInfo.id);
+    if (res.status === 200) {
+      // 更新本地评论数据的点赞状态
+      const commentIndex = commentsData.value.findIndex(c => c.CommentId === commentId);
+      if (commentIndex !== -1) {
+        commentsData.value[commentIndex].LikeCount += 1;
+        commentsData.value[commentIndex].Liked = true;
+      }
+      message.success('点赞成功');
+    } else {
+      message.error('点赞失败');
+    }
+  } catch (error) {
+    message.error('点赞时出错');
+    console.error(error);
+  }
+};
+
+// 删除评论
+const handleDeleteComment = async (commentId) => {
+  try {
+    const res = await articleApiStore.deleteComment(commentId);
+    if (res.status === 200) {
+      message.success('评论已删除');
+      await getComments(); // 刷新评论列表
+    } else {
+      message.error('删除评论失败');
+    }
+  } catch (error) {
+    message.error('删除评论时出错');
+    console.error(error);
+  }
+};
+
+// 显示回复表单
+const showReplyForm = (commentId) => {
+  replyingCommentId.value = commentId;
+  replyForm.value.parentId = commentId;
+};
+
+// 取消回复
+const cancelReply = () => {
+  replyingCommentId.value = null;
+  replyForm.value.content = '';
+  replyForm.value.parentId = null;
+};
+
+// 提交回复
+const handleSubmitReply = async (parentId) => {
+  if (!replyForm.value.content.trim()) {
+    message.error('回复内容不能为空');
+    return;
+  }
+
+  try {
+    const res = await articleApiStore.addReply({
+      content: replyForm.value.content,
+      parentId,
+      articleId: article.value.ArticleId,
+      userId: userInfo.id
+    });
+
+    if (res.status === 200) {
+      message.success('回复发表成功');
+      replyForm.value.content = '';
+      replyingCommentId.value = null;
+      await getComments(); // 刷新评论列表
+    } else {
+      message.error('发表回复失败');
+    }
+  } catch (error) {
+    message.error('发表回复时出错');
+    console.error(error);
+  }
+};
+
+// 点赞回复
+const handleLikeReply = async (replyId) => {
+  try {
+    const res = await articleApiStore.likeReply(replyId, userInfo.id);
+    if (res.status === 200) {
+      // 更新本地回复数据的点赞状态
+      commentsData.value.forEach(comment => {
+        const replyIndex = comment.RepliedComments.findIndex(r => r.CommentId === replyId);
+        if (replyIndex !== -1) {
+          comment.RepliedComments[replyIndex].LikeCount += 1;
+          comment.RepliedComments[replyIndex].Liked = true;
+        }
+      });
+      message.success('点赞成功');
+    } else {
+      message.error('点赞失败');
+    }
+  } catch (error) {
+    message.error('点赞时出错');
+    console.error(error);
+  }
+};
+
+// 删除回复
+const handleDeleteReply = async (replyId) => {
+  try {
+    const res = await articleApiStore.deleteReply(replyId);
+    if (res.status === 200) {
+      message.success('回复已删除');
+      await getComments(); // 刷新评论列表
+    } else {
+      message.error('删除回复失败');
+    }
+  } catch (error) {
+    message.error('删除回复时出错');
+    console.error(error);
+  }
+};
+
+// 格式化时间
+const formatTime = (timestamp) => {
+  return format(new Date(timestamp), 'yyyy-MM-dd HH:mm');
+};
+
+// 页面加载时获取数据
 onMounted(() => {
   fetchArticle(articleId);
-  getComments()
+  getComments();
 });
+
+// 模态框相关方法
+const handleOk = () => {
+  if (!addCommentContent.value.trim()) {
+    message.error('评论内容不能为空');
+    return;
+  }
+  handleSubmitComment();
+  isAddComments.value = false;
+};
+
+const handleCancel = () => {
+  isAddComments.value = false;
+};
+
+const AddComments = () => {
+  isAddComments.value = true;
+};
 </script>
 
 <style scoped>
@@ -227,5 +541,43 @@ onMounted(() => {
 .article-action-btn svg {
   margin-right: 5px;
   color: #ff9d00;
+}
+
+.comments-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.comments-title {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.comment-form {
+  margin-bottom: 20px;
+}
+
+.comment-item {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+}
+
+.reply-list {
+  margin-left: 40px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.liked {
+  color: #1890ff;
+}
+
+.comment-like-count {
+  margin-left: 5px;
 }
 </style>

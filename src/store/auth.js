@@ -24,6 +24,10 @@ export const userAuthStore = defineStore('auth', () => {
     const setUserInfo = (UserInfo) => {
         userInfo.value = UserInfo;
     }
+    const setToken = (AuthToken, RefreshToken) => {
+        token.value = AuthToken;
+        refreshToken.value = RefreshToken;
+    }
     const register = async (email, password, username, authorization) => {
         try {
             const response = await axios.post('/auth/register', { email, password, username, authorization });
@@ -52,6 +56,7 @@ export const userAuthStore = defineStore('auth', () => {
         isAuthenticated,
         userInfo,
         setUserInfo,
+        setToken,
         login,
         register,
         logout,
@@ -61,8 +66,6 @@ export const userAuthStore = defineStore('auth', () => {
 })
 export const tokenStore = defineStore('valid', () => {
     const userAuth = userAuthStore()
-    const authTokenString = userAuth.token
-    const refreshTokenString = userAuth.refreshToken
     const checkToken = async (auth_token, refresh_token) => {
         try {
              return await axios.post("/checkToken", {auth_token, refresh_token});
@@ -74,8 +77,7 @@ export const tokenStore = defineStore('valid', () => {
     const refreshToken = async (auth_token, refresh_token) => {
         try {
             const response = await axios.post("/refreshToken", {auth_token, refresh_token});
-            authTokenString.value = response.data.AuthToken;
-            refreshTokenString.value = response.data.RefreshToken
+            userAuth.setToken(response.data.AuthToken, response.data.RefreshToken);
             return response;
         } catch (err) {
             console.log(err);
@@ -83,11 +85,11 @@ export const tokenStore = defineStore('valid', () => {
         }
     }
     return {
-        authTokenString,
-        refreshTokenString,
         checkToken,
         refreshToken,
     }
+},{
+    persist: true,
 })
 export const articleAuthStore = defineStore('article', () => {
     const userStore = userAuthStore(); // 获取 userAuthStore 实例
@@ -177,7 +179,7 @@ export const articleAuthStore = defineStore('article', () => {
     }
     const addComment = async (content, user_id, article_id) => {
         try {
-            return await axios.post("article/addComments", {content, user_id, article_id})
+            return await axios.post("/article/addComments", {content, user_id, article_id})
         } catch (err) {
             console.error('AddComment error:', err);
             return null;
@@ -185,7 +187,11 @@ export const articleAuthStore = defineStore('article', () => {
     }
     const getComments = async (article_id) => {
         try {
-            return await axios.get(`/getComment/${article_id}`)
+            return await axios.get(`/getComment`, {
+                params: {
+                    article_id: article_id,
+                }
+            })
         } catch (err) {
             console.error('GetComment error:', err);
             return null;
@@ -196,6 +202,14 @@ export const articleAuthStore = defineStore('article', () => {
             return await axios.post(`/article/repliedComment`, {content, user_id, article_id, parent_id})
         } catch (err) {
             console.error('ReplyComment error:', err);
+            return null;
+        }
+    }
+    const likeComment = async (comment_id, article_id) => {
+        try {
+            return await axios.post(`/article/likeComment`, {comment_id: comment_id, article_id: article_id})
+        } catch (err) {
+            console.error('LikeComment error:', err);
             return null;
         }
     }
@@ -211,6 +225,7 @@ export const articleAuthStore = defineStore('article', () => {
         searchArticle,
         likeArticle,
         replyComments,
+        likeComment,
     }
 })
 export const folderStore = defineStore('folder', () => {

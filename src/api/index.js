@@ -6,7 +6,6 @@ const instance = axios.create({
     baseURL: "http://127.0.0.1:3002",
     timeout: 5000,
 })
-const router = useRouter()
 
 instance.interceptors.request.use(function (config) {
     const userAuth = userAuthStore()
@@ -29,6 +28,7 @@ instance.interceptors.response.use(function (response) {
     console.log(response);
     return response;
 }, async function (error) {
+    const router = useRouter();
     const userAuth = userAuthStore()
     const tokens = tokenStore()
         // 如果返回的状态码为401，说明token过期，需要刷新token
@@ -37,11 +37,7 @@ instance.interceptors.response.use(function (response) {
                 // 调用刷新token的API
                 const refreshResult = await tokens.refreshToken(userAuth.token, userAuth.refreshToken);
                 if (refreshResult.data.AuthToken && refreshResult.data.RefreshToken) {
-                    // 更新用户信息和token
-                    userAuth.token = refreshResult.data.Token;
-                    userAuth.refreshToken = refreshResult.data.RefreshToken;
-                    // 重新发送原始请求
-                    return instance(error.config);
+                    console.log("refresh token", refreshResult.data.RefreshToken);
                 } else {
                     // 如果刷新失败，跳转到登录页面
                     await router.push("/login");
