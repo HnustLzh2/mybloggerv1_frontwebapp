@@ -153,13 +153,64 @@ export const articleAuthStore = defineStore('article', () => {
             return null;
         }
     }
+    const searchArticle = async (text, page, size) => {
+        try {
+            return await axios.get('/searchArticle', {
+                params: {
+                    text: text,
+                    page: page,
+                    size: size
+                }
+            });
+        } catch (err) {
+            console.error('SearchArticle error:', err);
+            return null;
+        }
+    };
+    const likeArticle = async (articleId) => {
+        try {
+            return await axios.get(`/article/likeArticle/${articleId}`)
+        } catch (err) {
+            console.error('LikeArticle error:', err);
+            return null;
+        }
+    }
+    const addComment = async (content, user_id, article_id) => {
+        try {
+            return await axios.post("article/addComments", {content, user_id, article_id})
+        } catch (err) {
+            console.error('AddComment error:', err);
+            return null;
+        }
+    }
+    const getComments = async (article_id) => {
+        try {
+            return await axios.get(`/getComment/${article_id}`)
+        } catch (err) {
+            console.error('GetComment error:', err);
+            return null;
+        }
+    }
+    const replyComments = async (content, user_id, article_id, parent_id) => {
+        try {
+            return await axios.post(`/article/repliedComment`, {content, user_id, article_id, parent_id})
+        } catch (err) {
+            console.error('ReplyComment error:', err);
+            return null;
+        }
+    }
     return {
+        getComments,
         getArticleById,
         getAllArticles,
         getCategory,
         getArticlesByCategory,
         getFavoritesArticle,
         addFavoriteArticle,
+        addComment,
+        searchArticle,
+        likeArticle,
+        replyComments,
     }
 })
 export const folderStore = defineStore('folder', () => {

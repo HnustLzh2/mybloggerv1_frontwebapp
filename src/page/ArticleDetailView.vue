@@ -8,13 +8,13 @@
           <span class="article-category">分类：{{ article.Category }}</span>
           <div class="article-stats">
             <span class="article-star">
-              <StarOutlined /> {{ article.StarNum }}
+              <StarOutlined/> {{ article.StarNum }}
             </span>
             <span class="article-likes">
-              <LikeOutlined /> {{ article.LikesNum }}
+              <LikeOutlined/> {{ article.LikesNum }}
             </span>
             <span class="article-comments">
-              <MessageOutlined /> {{ article.CommentsNum }}
+              <MessageOutlined @click="AddComments"/> {{ article.CommentsNum }}
             </span>
           </div>
         </div>
@@ -39,15 +39,25 @@
       </div>
     </div>
   </div>
+  <a-modal v-model:visible="isAddComments" @ok="handleOk" @cancel="handleCancel" title="添加评论">
+    <a-form :model="addCommentContent">
+      <a-form-item label="评论内容">
+        <a-input v-model:value="addCommentContent" placeholder="请输入内容"/>
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import { StarOutlined, LikeOutlined, MessageOutlined } from '@ant-design/icons-vue';
-import {articleAuthStore} from "@/store/auth.js";
+import {articleAuthStore, userAuthStore} from "@/store/auth.js";
 import {useRoute} from "vue-router";
+import {message} from "ant-design-vue";
 // 定义文章数据结构
 const articleApiStore = articleAuthStore()
+const userApi = userAuthStore()
+const userInfo = userApi.userInfo
 const article = ref({   //命名要与后端定义的相同
   ArticleId: '',
   Title: '',
@@ -63,6 +73,9 @@ const article = ref({   //命名要与后端定义的相同
 // 获取当前路由对象          router是获取总路由管理器，route是获得当前url
 const route = useRoute();
 const articleId = route.params.id
+const isAddComments = ref(false)
+const addCommentContent = ref('')
+const commentsData = ref([])
 // 模拟获取文章数据
 const fetchArticle = async (id) => {
   // 这里应该是从后端获取文章数据的逻辑
@@ -72,16 +85,36 @@ const fetchArticle = async (id) => {
   article.value.Content = res.data.article.content
   article.value.Preview = res.data.article.preview
   article.value.Category = res.data.article.category
-  article.value.AuthorId = res.data.author.author_id
+  article.value.AuthorId = res.data.article.author_id
   article.value.CommentsNum = res.data.article.comments_num
   article.value.ViewNum = res.data.article.view_num
   article.value.StarNum = res.data.article.star_num
   article.value.LikesNum = res.data.article.likes_num
 };
-
+const getComments = async () => {
+  const res = await articleApiStore.getComments(articleId)
+  commentsData.value = res.data.success
+}
+const handleOk = async () => {
+  await articleApiStore.addComment(addCommentContent.value, userInfo.id, article.value.ArticleId).then(res => {
+    if (res && res.status === 200) {
+      message.success("添加成功")
+    } else {
+      message.error("添加失败")
+    }
+  })
+  isAddComments.value = false;
+}
+const handleCancel = () => {
+  isAddComments.value = false;
+}
+const AddComments = async () => {
+  isAddComments.value = true;
+}
 // 页面加载时获取文章数据
 onMounted(() => {
   fetchArticle(articleId);
+  getComments()
 });
 </script>
 

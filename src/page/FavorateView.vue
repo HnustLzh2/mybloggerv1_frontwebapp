@@ -6,7 +6,13 @@
         <a-list-item>
           <a-list-item-meta>
             <template #title>
-              <a @click="viewFolder(item.id)">{{ item.folder_name }}</a>
+              <a-space style="position: relative; width: 100%;">
+                <a @click="viewFolder(item.id)" style="color: black; margin-left: 20px">{{ item.folder_name }}</a>
+                <EditOutlined
+                    @click="EditFolder(item.id)"
+                    style="position: absolute; right: 100px; top: 0;"
+                />
+              </a-space>
             </template>
           </a-list-item-meta>
         </a-list-item>
@@ -17,6 +23,14 @@
       <a-form :model="folderForm">
         <a-form-item label="收藏夹名称">
           <a-input v-model:value="folderForm.folder_name" placeholder="请输入收藏夹名称" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:visible="isShowEditFolder" title="修改文件夹" @ok="handleModifyFolderModalOk" @cancel="handleModifyFolderModalCancel">
+      <a-form :model="newName">
+        <a-form-item label="新名字">
+          <a-input v-model:value="newName.folder_name" placeholder="请输入新名字" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -41,7 +55,9 @@
 import { ref,onMounted } from 'vue';
 import { useRouter} from "vue-router";
 import {folderStore, userAuthStore} from "../store/auth.js"
-
+import {EditOutlined} from "@ant-design/icons-vue";
+import {message} from "ant-design-vue";
+const newName = ref({folder_name: ''});
 const folderApi = folderStore()
 const userApi = userAuthStore()
 const folders = ref([]);
@@ -51,6 +67,29 @@ const isArticleModalVisible = ref(false);
 const folderForm = ref({ folder_name: '' });
 const router = useRouter();
 const userInfo = userApi.userInfo;
+const isShowEditFolder= ref(false);
+const currentFolderId = ref("")
+const EditFolder = (folder_id) => {
+  currentFolderId.value = folder_id;
+  isShowEditFolder.value = true;
+}
+const handleModifyFolderModalOk = async() => {
+  try {
+    await folderApi.ModifyFolder(newName.value.folder_name, currentFolderId.value).then((res) => {
+      if (res.status === 200) {
+        message.success("修改成功")
+        getFolders()
+      }
+    })
+  } catch (err) {
+    console.log(err);
+  } finally {
+    isShowEditFolder.value = false;
+  }
+}
+const handleModifyFolderModalCancel = () => {
+  isShowEditFolder.value = false;
+}
 const getFolders = async () => {
   try {
     const userId = userInfo.id;

@@ -91,7 +91,7 @@ const pagination = ref({
   onChange: (page, pageSize) => {
     // 更新当前页码
     pagination.value.current = page;
-    pagination.pageSize = pageSize;
+    pagination.value.pageSize = pageSize;
     // 更新查询参数
     router.push({ path: '/', query: { page: page, pageSize: pageSize } });
   },
@@ -153,11 +153,22 @@ const clickType = async (type, item) => {
     case StarOutlined:
       try {
         currentArticleId.value = item.id;
-        await getFolders();
         isAddFavorateArticle.value = true;
+        await getFolders();
       }catch (e) {
         console.error(e);
+        message.error("添加失败")
       }
+      break;
+    case LikeOutlined:
+      try {
+        await articleAuth.likeArticle(item.id);
+        message.success("添加成功")
+      }catch (e) {
+        console.error(e);
+        message.error("添加失败")
+      }
+      break;
   }
 }
 // 添加到收藏夹
