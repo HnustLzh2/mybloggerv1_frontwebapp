@@ -1,4 +1,4 @@
-<template>
+<template xmlns="">
   <div class="article-container">
     <div class="article-background"></div>
     <div class="article-content">
@@ -77,54 +77,54 @@
           <a-list-item class="comment-item">
             <!-- 评论者信息 -->
             <a-comment
-                :author="item.UserName"
-                :avatar="item.UserAvatar"
-                :datetime="formatTime(item.PublishTime)"
+                :author="item.user_name"
+                :avatar="item.user_avatar"
+                :datetime="formatTime(item.publish_time)"
             >
               <!-- 评论内容 -->
               <template #content>
-                <p>{{ item.Content }}</p>
+                <p>{{ item.content }}</p>
                 <!-- 点赞按钮 -->
                 <a-tooltip title="点赞">
-                  <span @click="handleLikeComment(item.CommentId)">
+                  <span @click="handleLikeComment(item.id)">
                     <LikeOutlined :class="{ liked: item.Liked }" />
-                    <span class="comment-like-count">{{ item.LikeCount }}</span>
+                    <span class="comment-like-count">{{ item.like_count }}</span>
                   </span>
                 </a-tooltip>
                 <!-- 删除按钮（如果用户有权限） -->
-                <a-tooltip v-if="item.SendUserId === userInfo.id" title="删除">
-                  <span @click="handleDeleteComment(item.CommentId)">
+                <a-tooltip v-if="item.send_userid === userInfo.id" title="删除">
+                  <span @click="handleDeleteComment(item.id)">
                     <DeleteOutlined />
                   </span>
                 </a-tooltip>
               </template>
-
               <!-- 回复评论区域 -->
               <template #actions>
-                <span @click="showReplyForm(item.CommentId)">回复</span>
+                <span @click="showReplyForm(item.id)">回复</span>
               </template>
 
               <!-- 回复表单 -->
-              <template v-if="replyingCommentId === item.CommentId" #content>
+              <template v-if="replyingCommentId === item.id" #content>
                 <a-input
                     v-model:value="replyForm.content"
                     placeholder="写下你的回复..."
-                    @press-enter="handleSubmitReply(item.CommentId)"
+                    @press-enter="handleSubmitReply(item)"
                 />
                 <a-button type="text" @click="cancelReply">取消</a-button>
-                <a-button type="primary" @click="handleSubmitReply(item.CommentId)">发送</a-button>
-                <div class="comment-content">{{ item.Content }}</div>
+                <a-button type="primary" @click="handleSubmitReply(item)">发送</a-button>
+
+                <div class="comment-content">{{ item.content }}</div>
 
                 <!-- 点赞按钮 -->
                 <a-tooltip title="点赞">
-                  <span @click="handleLikeComment(item.CommentId)">
+                  <span @click="handleLikeComment(item.id)">
                     <LikeOutlined :class="{ liked: item.Liked }" />
-                    <span class="comment-like-count">{{ item.LikeCount }}</span>
+                    <span class="comment-like-count">{{ item.like_count }}</span>
                   </span>
                 </a-tooltip>
                 <!-- 删除按钮 -->
-                <a-tooltip v-if="item.SendUserId === userInfo.id" title="删除">
-                  <span @click="handleDeleteComment(item.CommentId)">
+                <a-tooltip v-if="item.send_userid === userInfo.id" title="删除">
+                  <span @click="handleDeleteComment(item.id)">
                     <DeleteOutlined />
                   </span>
                 </a-tooltip>
@@ -132,40 +132,7 @@
 
               <!-- 子评论列表 -->
               <template #children>
-                <a-list
-                    class="reply-list"
-                    :data-source="item.RepliedComments"
-                >
-                  <template #renderItem="{ item: reply }">
-                    <a-list-item>
-                      <a-comment
-                          :author="reply.UserName"
-                          :avatar="reply.UserAvatar"
-                          :datetime="formatTime(reply.PublishTime)"
-                      >
-                        <template #content>
-                          <p>{{ reply.Content }}</p>
-                          <!-- 点赞按钮 -->
-                          <a-tooltip title="点赞">
-                            <span @click="handleLikeReply(reply.CommentId)">
-                              <LikeOutlined :class="{ liked: reply.Liked }" />
-                              <span class="comment-like-count">{{ reply.LikeCount }}</span>
-                            </span>
-                          </a-tooltip>
-                          <!-- 删除按钮 -->
-                          <a-tooltip v-if="reply.SendUserId === userInfo.id" title="删除">
-                            <span @click="handleDeleteReply(reply.CommentId)">
-                              <DeleteOutlined />
-                            </span>
-                          </a-tooltip>
-                        </template>
-                        <template #actions>
-                          <span @click="showReplyForm(reply.CommentId)">回复</span>
-                        </template>
-                      </a-comment>
-                    </a-list-item>
-                  </template>
-                </a-list>
+                <CommentsList :comments="item.replied_comments" />
               </template>
             </a-comment>
           </a-list-item>
@@ -196,6 +163,7 @@ import { articleAuthStore, userAuthStore } from "@/store/auth.js";
 import { useRoute } from "vue-router";
 import { message } from "ant-design-vue";
 import { format } from 'date-fns';
+import CommentsList from "@/components/CommentsList.vue";
 
 // 定义文章数据结构
 const articleApiStore = articleAuthStore();
@@ -225,7 +193,7 @@ const addCommentForm = ref({
 });
 const replyForm = ref({
   content: '',
-  parentId: null
+  parent_id: null
 });
 const replyingCommentId = ref(null);
 const isAddComments = ref(false);
@@ -250,13 +218,16 @@ const fetchArticle = async (id) => {
 
 // 获取评论数据
 const getComments = async () => {
-  const res = await articleApiStore.getComments(articleId);
-  if (res && res.data && res.data.comments) {
-    commentsData.value = res.data.comments.map(comment => ({
-      ...comment,
-      Liked: comment.liked_by_user || false // 假设后端返回是否已点赞的字段
-    }));
-  }
+  await articleApiStore.getComments(articleId).then((res) => {
+    console.log(res);
+    if (res && res.data && res.data.success) {
+      commentsData.value = res.data.success.map(comment => ({
+        ...comment,
+        Liked: comment.liked_by_user || false // 假设后端返回是否已点赞的字段
+      }));
+    }
+    console.log(commentsData.value);
+  })
 };
 
 // 提交评论
@@ -266,11 +237,11 @@ const handleSubmitComment = async () => {
     return;
   }
   try {
-    const res = await articleApiStore.addComment({
-      content: addCommentForm.value.content,
-      user_id: userInfo.id,
-      article_id: article.value.ArticleId,
-    });
+    const res = await articleApiStore.addComment(
+      addCommentForm.value.content,
+      userInfo.id,
+      article.value.ArticleId,
+    );
     if (res.status === 200) {
       message.success('评论发表成功');
       addCommentForm.value.content = '';
@@ -290,9 +261,9 @@ const handleLikeComment = async (commentId) => {
     const res = await articleApiStore.likeComment(commentId, userInfo.id);
     if (res.status === 200) {
       // 更新本地评论数据的点赞状态
-      const commentIndex = commentsData.value.findIndex(c => c.CommentId === commentId);
+      const commentIndex = commentsData.value.findIndex(c => c.id === commentId);
       if (commentIndex !== -1) {
-        commentsData.value[commentIndex].LikeCount += 1;
+        commentsData.value[commentIndex].like_count += 1;
         commentsData.value[commentIndex].Liked = true;
       }
       message.success('点赞成功');
@@ -324,35 +295,37 @@ const handleDeleteComment = async (commentId) => {
 // 显示回复表单
 const showReplyForm = (commentId) => {
   replyingCommentId.value = commentId;
-  replyForm.value.parentId = commentId;
+  replyForm.value.parent_id = commentId;
 };
 
 // 取消回复
 const cancelReply = () => {
   replyingCommentId.value = null;
   replyForm.value.content = '';
-  replyForm.value.parentId = null;
+  replyForm.value.parent_id = null;
 };
 
 // 提交回复
-const handleSubmitReply = async (parentId) => {
-  if (!replyForm.value.content.trim()) {
+const handleSubmitReply = async (parent) => {
+  if (!replyForm.value.content) {
     message.error('回复内容不能为空');
     return;
   }
 
   try {
-    const res = await articleApiStore.addReply({
-      content: replyForm.value.content,
-      parentId,
-      articleId: article.value.ArticleId,
-      userId: userInfo.id
-    });
+    const res = await articleApiStore.replyComments(
+        replyForm.value.content,
+        userInfo.id,
+        article.value.ArticleId,
+        parent.id,
+    );
 
     if (res.status === 200) {
       message.success('回复发表成功');
       replyForm.value.content = '';
       replyingCommentId.value = null;
+      console.log(res);
+      parent.replied_comments.push(res.data.success);
       await getComments(); // 刷新评论列表
     } else {
       message.error('发表回复失败');
@@ -366,14 +339,14 @@ const handleSubmitReply = async (parentId) => {
 // 点赞回复
 const handleLikeReply = async (replyId) => {
   try {
-    const res = await articleApiStore.likeReply(replyId, userInfo.id);
+    const res = await articleApiStore.likeComment(replyId, userInfo.id);
     if (res.status === 200) {
       // 更新本地回复数据的点赞状态
       commentsData.value.forEach(comment => {
-        const replyIndex = comment.RepliedComments.findIndex(r => r.CommentId === replyId);
+        const replyIndex = comment.replied_comments.findIndex(r => r.CommentId === replyId);
         if (replyIndex !== -1) {
-          comment.RepliedComments[replyIndex].LikeCount += 1;
-          comment.RepliedComments[replyIndex].Liked = true;
+          comment.replied_comments[replyIndex].like_count += 1;
+          comment.replied_comments[replyIndex].Liked = true;
         }
       });
       message.success('点赞成功');

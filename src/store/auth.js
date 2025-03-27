@@ -187,11 +187,7 @@ export const articleAuthStore = defineStore('article', () => {
     }
     const getComments = async (article_id) => {
         try {
-            return await axios.get(`/getComment`, {
-                params: {
-                    article_id: article_id,
-                }
-            })
+            return await axios.get(`/getComment/${article_id}`)
         } catch (err) {
             console.error('GetComment error:', err);
             return null;
@@ -205,9 +201,9 @@ export const articleAuthStore = defineStore('article', () => {
             return null;
         }
     }
-    const likeComment = async (comment_id, article_id) => {
+    const likeComment = async (comment_id, user_id) => {
         try {
-            return await axios.post(`/article/likeComment`, {comment_id: comment_id, article_id: article_id})
+            return await axios.post(`/article/likeComment`, {comment_id: comment_id, user_id: user_id})
         } catch (err) {
             console.error('LikeComment error:', err);
             return null;
