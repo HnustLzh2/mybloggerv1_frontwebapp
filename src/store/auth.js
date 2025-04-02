@@ -209,6 +209,14 @@ export const articleAuthStore = defineStore('article', () => {
             return null;
         }
     }
+    const deleteComment = async (comment_id) => {
+        try {
+            return await axios.delete(`/article/deleteComment/${comment_id}`)
+        } catch (err) {
+            console.error('DeleteComment error:', err);
+            return null;
+        }
+    }
     return {
         getComments,
         getArticleById,
@@ -222,6 +230,7 @@ export const articleAuthStore = defineStore('article', () => {
         likeArticle,
         replyComments,
         likeComment,
+        deleteComment,
     }
 })
 export const folderStore = defineStore('folder', () => {
@@ -262,5 +271,26 @@ export const folderStore = defineStore('folder', () => {
         ModifyFolder,
         GetArticleFromFolder,
         GetAllFolder,
+    }
+})
+export const chatStore = defineStore('chat', () => {
+    const createChatRoom = async (room_name, creator_id) => {
+        try {
+            return await axios.post(`/chat/create-room`, {room_name, creator_id})
+        } catch (err) {
+            console.error('CreateChatRoomError:', err);
+            return null;
+        }
+    }
+    const getChatMessage = async (roomId) => {
+        try {
+            return await axios.get(`/message/history/${roomId}`)
+        } catch (err) {
+            console.error('GetChatMessage error:', err);
+            return null;
+        }
+    }
+    const getAllChatRooms = async (user_id) => {
+
     }
 })

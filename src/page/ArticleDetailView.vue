@@ -17,6 +17,9 @@
             <span class="article-comments">
               <MessageOutlined @click="AddComments"/> {{ article.CommentsNum }}
             </span>
+            <span class="article-view">
+              <EyeOutlined/> {{article.ViewNum}}
+            </span>
           </div>
         </div>
       </div>
@@ -81,6 +84,7 @@
                 :avatar="item.user_avatar"
                 :datetime="formatTime(item.publish_time)"
             >
+
               <!-- 评论内容 -->
               <template #content>
                 <p>{{ item.content }}</p>
@@ -92,6 +96,7 @@
                   </span>
                 </a-tooltip>
                 <!-- 删除按钮（如果用户有权限） -->
+                <span  style="padding-left: 50px"> </span>
                 <a-tooltip v-if="item.send_userid === userInfo.id" title="删除">
                   <span @click="handleDeleteComment(item.id)">
                     <DeleteOutlined />
@@ -100,11 +105,14 @@
               </template>
               <!-- 回复评论区域 -->
               <template #actions>
+                <span v-if="item.replied_comments?.length" class="reply-count" @click="toggleCommentExpand(item.id)">
+                  {{ expandedComments.has(item.id) ? '收起' : '展开' }}
+                  {{ item.replied_comments.length }} 条回复
+                   </span>
                 <span @click="showReplyForm(item.id)">回复</span>
               </template>
-
               <!-- 回复表单 -->
-              <template v-if="replyingCommentId === item.id" #content>
+              <template v-if="replyingCommentId === item.id" #actions>
                 <a-input
                     v-model:value="replyForm.content"
                     placeholder="写下你的回复..."
@@ -112,28 +120,12 @@
                 />
                 <a-button type="text" @click="cancelReply">取消</a-button>
                 <a-button type="primary" @click="handleSubmitReply(item)">发送</a-button>
-
-                <div class="comment-content">{{ item.content }}</div>
-
-                <!-- 点赞按钮 -->
-                <a-tooltip title="点赞">
-                  <span @click="handleLikeComment(item.id)">
-                    <LikeOutlined :class="{ liked: item.Liked }" />
-                    <span class="comment-like-count">{{ item.like_count }}</span>
-                  </span>
-                </a-tooltip>
-                <!-- 删除按钮 -->
-                <a-tooltip v-if="item.send_userid === userInfo.id" title="删除">
-                  <span @click="handleDeleteComment(item.id)">
-                    <DeleteOutlined />
-                  </span>
-                </a-tooltip>
               </template>
-
               <!-- 子评论列表 -->
-              <template #children>
-                <CommentsList :comments="item.replied_comments" />
-              </template>
+              <div v-if="expandedComments.has(item.id) && item.replied_comments?.length"
+                   class="nested-replies">
+                <CommentsList :comments="item.replied_comments" :article="article" :really-data="commentChilrend" :get-comment="getComments"/>
+              </div>
             </a-comment>
           </a-list-item>
         </template>
@@ -157,7 +149,7 @@ import {
   StarOutlined,
   LikeOutlined,
   MessageOutlined,
-  DeleteOutlined
+  DeleteOutlined,EyeOutlined
 } from '@ant-design/icons-vue';
 import { articleAuthStore, userAuthStore } from "@/store/auth.js";
 import { useRoute } from "vue-router";
@@ -181,7 +173,15 @@ const article = ref({
   ViewNum: 0,
   AuthorId: ''
 });
-
+const expandedComments = ref(new Set()); // 存储已展开的评论ID
+// 切换评论展开状态
+const toggleCommentExpand = (commentId) => {
+  if (expandedComments.value.has(commentId)) {
+    expandedComments.value.delete(commentId);
+  } else {
+    expandedComments.value.add(commentId);
+  }
+};
 // 获取当前路由对象
 const route = useRoute();
 const articleId = route.params.id;
@@ -215,18 +215,21 @@ const fetchArticle = async (id) => {
     article.value.LikesNum = res.data.article.likes_num;
   }
 };
-
+const tempData = ref([])
+const commentChilrend = ref([])
 // 获取评论数据
 const getComments = async () => {
   await articleApiStore.getComments(articleId).then((res) => {
     console.log(res);
     if (res && res.data && res.data.success) {
-      commentsData.value = res.data.success.map(comment => ({
+      tempData.value = res.data.success.filter(item => item.parent_comment_id === null);
+      commentChilrend.value = res.data.success.filter(item => item.parent_comment_id !== null);
+      commentsData.value = tempData.value.map(comment => ({
         ...comment,
         Liked: comment.liked_by_user || false // 假设后端返回是否已点赞的字段
       }));
+      console.log(commentsData.value);
     }
-    console.log(commentsData.value);
   })
 };
 
@@ -261,7 +264,7 @@ const handleLikeComment = async (commentId) => {
     const res = await articleApiStore.likeComment(commentId, userInfo.id);
     if (res.status === 200) {
       // 更新本地评论数据的点赞状态
-      const commentIndex = commentsData.value.findIndex(c => c.id === commentId);
+      const commentIndex = commentsData.value.findIndex(c => c.id === commentId); //过滤条件，找到对应的commentID
       if (commentIndex !== -1) {
         commentsData.value[commentIndex].like_count += 1;
         commentsData.value[commentIndex].Liked = true;
@@ -311,7 +314,6 @@ const handleSubmitReply = async (parent) => {
     message.error('回复内容不能为空');
     return;
   }
-
   try {
     const res = await articleApiStore.replyComments(
         replyForm.value.content,
@@ -319,7 +321,6 @@ const handleSubmitReply = async (parent) => {
         article.value.ArticleId,
         parent.id,
     );
-
     if (res.status === 200) {
       message.success('回复发表成功');
       replyForm.value.content = '';
@@ -464,12 +465,11 @@ const AddComments = () => {
   gap: 20px;
 }
 
-.article-star, .article-likes, .article-comments {
+.article-star, .article-likes, .article-comments, .article-view {
   display: flex;
   align-items: center;
   font-size: 1rem;
 }
-
 .article-star svg, .article-likes svg, .article-comments svg {
   margin-right: 5px;
   color: #ff9d00;
@@ -552,5 +552,9 @@ const AddComments = () => {
 
 .comment-like-count {
   margin-left: 5px;
+}
+.reply-count {
+  color: #666;
+  font-size: 0.9em;
 }
 </style>

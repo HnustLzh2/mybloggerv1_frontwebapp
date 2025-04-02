@@ -21,6 +21,9 @@
           <a-menu-item key="Search">
             搜索 🔍
           </a-menu-item>
+          <a-menu-item key="ChoseChat">
+            聊天室
+          </a-menu-item>
           <a-menu-item key="others">
             <a href="https://github.com/HnustLzh2?tab=repositories" target="_blank" rel="noopener noreferrer">
                我的仓库链接⚡️

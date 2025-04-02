@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import {LikeOutlined, MessageOutlined, StarOutlined} from '@ant-design/icons-vue';
+import {LikeOutlined, MessageOutlined, StarOutlined, EyeOutlined} from '@ant-design/icons-vue';
 import {onMounted, ref, onUnmounted} from 'vue';
 import {articleAuthStore, folderStore, userAuthStore} from '@/store/auth';
 import {useRoute, useRouter} from 'vue-router';
@@ -140,6 +140,7 @@ const fetchArticles = async () => {
         { type: StarOutlined, text: article.star_num.toString() },
         { type: LikeOutlined, text: article.likes_num.toString() },
         { type: MessageOutlined, text: article.comments_num.toString() },
+        { type: EyeOutlined, text: article.view_num.toString() },
       ]
     })); // 将获取到的文章数据赋值给 listData
   } catch (error) {
