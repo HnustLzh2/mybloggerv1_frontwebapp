@@ -11,8 +11,12 @@ instance.interceptors.request.use(function (config) {
     const userAuth = userAuthStore()
     const authToken = userAuth.token;
     const refreshToken =  userAuth.refreshToken;
+    if (config.url.startsWith('/chat/joinRoom')) {
+        config.headers['Connection'] = 'Upgrade'
+        config.headers['Upgrade'] = 'websocket'
+    }
     // 检查 URL 是否以 /article/ 或 /folder/ 开头
-    if (authToken && refreshToken && (config.url.startsWith('/article/') || config.url.startsWith('/folder/'))) {
+    if (authToken && refreshToken && (config.url.startsWith('/article/') || config.url.startsWith('/folder/') || config.url.startsWith('/chat/') || config.url.startsWith('/message/'))) {
         config.headers['Authorization'] = `${authToken}`;
         config.headers['RefreshToken'] = `${refreshToken}`;
     }
@@ -37,7 +41,7 @@ instance.interceptors.response.use(function (response) {
                 // 调用刷新token的API
                 const refreshResult = await tokens.refreshToken(userAuth.token, userAuth.refreshToken);
                 if (refreshResult.data.AuthToken && refreshResult.data.RefreshToken) {
-                    console.log("refresh token", refreshResult.data.RefreshToken);
+                   //console.log("refresh token", refreshResult.data.RefreshToken);
                 } else {
                     // 如果刷新失败，跳转到登录页面
                     await router.push("/login");

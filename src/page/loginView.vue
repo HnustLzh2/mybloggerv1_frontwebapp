@@ -22,7 +22,7 @@
       <a-form-item
           label="密码"
           name="password"
-          :rules="[{ required: true, message: 'Please input your password!' }, { min: 8, max: 18 }]"
+          :rules="[{ required: true, message: 'Please input your password!' }, { min: 6, max: 18 }]"
       >
         <a-input-password v-model:value="formState.password" />
       </a-form-item>

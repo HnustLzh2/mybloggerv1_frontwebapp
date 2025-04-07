@@ -290,7 +290,49 @@ export const chatStore = defineStore('chat', () => {
             return null;
         }
     }
-    const getAllChatRooms = async (user_id) => {
-
+    const getAllChatRooms = async () => {
+        try {
+            return await axios.get(`/chat/rooms`)
+        } catch (err) {
+            console.error('GetAllChatRooms error:', err);
+            return null;
+        }
+    }
+    const getAllYourCharRooms = async (user_id) => {
+        try {
+            return await axios.get(`/chat/yourRooms/${user_id}`)
+        } catch (err) {
+            console.error('GetAllYourCharRooms error:', err);
+            return null;
+        }
+    }
+    const getRoomInfo = async (room_id) => {
+        try {
+            return await axios.get(`/chat/room/${room_id}`)
+        } catch (err) {
+            console.error('GetRoomMessageHistoryError:', err);
+            return null;
+        }
+    }
+    const JoinRoom = async (room_id, user_id) => {
+        try {
+            return await axios.get(`/chat/joinRoom`, {
+                params: {
+                    roomId :room_id,
+                    userId :user_id,
+                }
+            })
+        } catch (err) {
+            console.error('JoinRoomError:', err);
+            return null;
+        }
+    }
+    return {
+        createChatRoom,
+        getChatMessage,
+        getAllChatRooms,
+        getAllYourCharRooms,
+        getRoomInfo,
+        JoinRoom
     }
 })

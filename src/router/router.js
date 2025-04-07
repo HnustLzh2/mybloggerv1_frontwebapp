@@ -9,6 +9,7 @@ import SearchView from "@/page/SearchView.vue";
 import SpecialSubjectView from "@/page/SpecialSubjectView.vue";
 import TypeArticleView from "@/page/TypeArticleView.vue";
 import ChoseChatView from "@/page/ChoseChatView.vue";
+import ChatDetailView from "@/page/chatDetailView.vue";
 
 
 const routes = [
@@ -21,7 +22,8 @@ const routes = [
     { path: '/login', name: 'Login', component: LoginView },
     { path: '/register', name: 'Register', component: RegisterView },
     { path: '/ArticleType', name: 'Type', component: TypeArticleView },
-    { path: '/ChoseChatPage', name: 'ChoseChat', component: ChoseChatView}
+    { path: '/ChoseChatPage', name: 'ChoseChat', component: ChoseChatView},
+    { path: '/chat/room/:roomId', name: 'ChatDetail', component: ChatDetailView }
 ];
 
 const router = createRouter({
