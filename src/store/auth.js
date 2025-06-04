@@ -67,22 +67,12 @@ export const userAuthStore = defineStore('auth', () => {
 export const tokenStore = defineStore('valid', () => {
     const userAuth = userAuthStore()
     const checkToken = async (auth_token, refresh_token) => {
-        try {
-             return await axios.post("/checkToken", {auth_token, refresh_token});
-        } catch (err) {
-            console.log(err);
-            return null;
-        }
+        return await axios.post("/checkToken", {auth_token, refresh_token});
     }
     const refreshToken = async (auth_token, refresh_token) => {
-        try {
-            const response = await axios.post("/refreshToken", {auth_token, refresh_token});
-            userAuth.setToken(response.data.AuthToken, response.data.RefreshToken);
-            return response;
-        } catch (err) {
-            console.log(err);
-            return null;
-        }
+        const response = await axios.post("/refreshToken", {auth_token, refresh_token});
+        userAuth.setToken(response.data.AuthToken, response.data.RefreshToken);
+        return response;
     }
     return {
         checkToken,
@@ -259,12 +249,7 @@ export const folderStore = defineStore('folder', () => {
         }
     }
     const GetAllFolder = async (id) => {
-        try {
-            return await axios.get(`/folder/getMyFolders/${id}`)
-        } catch (err) {
-            console.error('GetAllFolder error:', err);
-            return null;
-        }
+        return await axios.get(`/folder/getMyFolders/${id}`)
     }
     return {
         createCustomizedFolder,

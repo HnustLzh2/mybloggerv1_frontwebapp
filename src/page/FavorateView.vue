@@ -91,14 +91,10 @@ const handleModifyFolderModalCancel = () => {
   isShowEditFolder.value = false;
 }
 const getFolders = async () => {
-  try {
     const userId = userInfo.id;
     const response = await folderApi.GetAllFolder(userId)
     folders.value = response.data.data;
     console.log(folders.value)
-  } catch (error) {
-    console.error('Get folders error:', error);
-  }
 };
 // 跳转到文章详情
 const moveToDetail = (item) => {

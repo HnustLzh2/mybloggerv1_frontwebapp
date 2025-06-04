@@ -1,6 +1,5 @@
 import axios from "axios"
 import {tokenStore, userAuthStore} from "@/store/auth.js";
-import {useRouter} from "vue-router";
 
 const instance = axios.create({
     baseURL: "http://127.0.0.1:3002",
@@ -27,31 +26,26 @@ instance.interceptors.request.use(function (config) {
     console.log(error);
     return Promise.reject(error);
 });
+import router from '../router/router.js' // 导入路由实例
 instance.interceptors.response.use(function (response) {
     //打印response
     console.log(response);
     return response;
 }, async function (error) {
-    const router = useRouter();
     const userAuth = userAuthStore()
     const tokens = tokenStore()
-        // 如果返回的状态码为401，说明token过期，需要刷新token
+    console.log(router)
         if (error.response && error.response.status === 401) {
-            try {
-                // 调用刷新token的API
-                const refreshResult = await tokens.refreshToken(userAuth.token, userAuth.refreshToken);
-                if (refreshResult.data.AuthToken && refreshResult.data.RefreshToken) {
-                   //console.log("refresh token", refreshResult.data.RefreshToken);
-                } else {
-                    // 如果刷新失败，跳转到登录页面
-                    await router.push("/login");
-                }
-            } catch (refreshError) {
-                // 如果刷新token失败，跳转到登录页面
-                console.error('Refresh token failed:', refreshError);
-                await router.push("/login");
+            // 调用刷新token的API
+            const refreshResult = await tokens.refreshToken(userAuth.token, userAuth.refreshToken);
+            if (refreshResult.data.AuthToken && refreshResult.data.RefreshToken) {
+                userAuth.refreshToken = refreshResult.data.RefreshToken;
+                userAuth.token = refreshResult.data.AuthToken
             }
         }
+    if (error.response && error.response.status === 409) {
+        await router.push('/login');
+    }
     console.log(error)
     return Promise.reject(error);
 });
